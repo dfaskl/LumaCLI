@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-Command *)",
+      "PowerShell(where.exe mvn 2>$null; $env:PATH -split ';' | Where-Object { $_ -match 'maven|mvn' })",
+      "PowerShell(& cmd /c \"mvn --version\" 2>&1)"
+    ]
+  }
+}
