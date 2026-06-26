@@ -15,6 +15,17 @@ target/
 *.nar
 *.ear
 
+# 生成内容 / 演示 / 营销资源
+output/
+demo/
+demo-deepseek/
+demo-step/
+landing/
+ppt/
+poster/
+tools/redfox-dashboard/
+docs/website/
+
 # JVM crash logs
 hs_err_pid*
 replay_pid*
