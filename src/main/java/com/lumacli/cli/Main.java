@@ -225,7 +225,20 @@ public class Main {
         }
         AtomicReference<LlmClient> llmClientRef = new AtomicReference<>(llmClient);
 
-        try (Terminal terminal = TerminalBuilder.builder().system(true).dumb(true).build()) {
+        Terminal terminal0;
+        try {
+            terminal0 = TerminalBuilder.builder().system(true).dumb(false).build();
+        } catch (Exception e) {
+            System.err.println("⚠️ 原生终端创建失败: " + e.getMessage());
+            System.err.println("   Tab 补全、状态栏等功能将不可用。");
+            System.err.println("   建议使用 Windows Terminal 运行本程序。");
+            try {
+                terminal0 = TerminalBuilder.builder().system(true).dumb(true).build();
+            } catch (Exception e2) {
+                throw new RuntimeException("终端初始化完全失败", e2);
+            }
+        }
+        try (Terminal terminal = terminal0) {
             refreshTerminalColumns(terminal);
             TerminalHitlHandler terminalHitlHandler = new TerminalHitlHandler(false);
             SwitchableHitlHandler hitlHandler = new SwitchableHitlHandler(terminalHitlHandler);
@@ -265,6 +278,9 @@ public class Main {
             lineReader.option(LineReader.Option.BRACKETED_PASTE, true);
             lineReader.option(LineReader.Option.AUTO_LIST, true);
             lineReader.option(LineReader.Option.AUTO_MENU, true);
+            // 禁用 "do you wish to see all N possibilities?" 确认提示
+            lineReader.setVariable(LineReader.LIST_MAX, Integer.MAX_VALUE);
+            lineReader.setVariable(LineReader.MENU_LIST_MAX, Integer.MAX_VALUE);
             configureHistory(lineReader, Path.of(System.getProperty("user.home")));
             configureSlashCommandHint(lineReader);
             configureJLineInteractiveWidgets(lineReader);
@@ -1618,14 +1634,20 @@ public class Main {
         if (lineReader == null) {
             return;
         }
-        lineReader.getWidgets().put("lumacli-slash-command-hint", () -> {
+        lineReader.getWidgets().put("lumacli-slash-complete", () -> {
             lineReader.getBuffer().write("/");
+            // 自动触发补全，像 Claude Code 一样输入 / 就弹出命令列表
+            try {
+                lineReader.callWidget(LineReader.COMPLETE_WORD);
+            } catch (Exception ignored) {
+                // COMPLETE_WORD 不存在时静默忽略
+            }
             return true;
         });
-        Reference slashHint = new Reference("lumacli-slash-command-hint");
-        bindSlashWidget(lineReader, LineReader.MAIN, slashHint);
-        bindSlashWidget(lineReader, LineReader.EMACS, slashHint);
-        bindSlashWidget(lineReader, LineReader.VIINS, slashHint);
+        Reference slashRef = new Reference("lumacli-slash-complete");
+        bindSlashWidget(lineReader, LineReader.MAIN, slashRef);
+        bindSlashWidget(lineReader, LineReader.EMACS, slashRef);
+        bindSlashWidget(lineReader, LineReader.VIINS, slashRef);
     }
 
     static void configureJLineInteractiveWidgets(LineReader lineReader) {

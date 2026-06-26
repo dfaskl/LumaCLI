@@ -62,21 +62,38 @@ final class LumaCliCompleter implements Completer {
         String word = line.word() == null ? "" : line.word();
         int replacementStart = Math.max(0, prefix.length() - word.length());
 
+        // 去重：只输入 / 时只显示顶级命令，避免候选过多触发 JLine "do you wish to see" 确认
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
         for (Main.SlashCommandHint hint : Main.slashCommandHints()) {
             String command = hint.insertText();
             if (!command.startsWith(prefix)) {
                 continue;
             }
-            String value = command.substring(Math.min(replacementStart, command.length()));
-            candidates.add(new Candidate(
-                    value,
-                    hint.display(),
-                    "LumaCLI 命令",
-                    hint.description(),
-                    null,
-                    null,
-                    true
-            ));
+            String topLevel = command.contains(" ") ? command.substring(0, command.indexOf(' ')) : command;
+            if (prefix.startsWith("/") && prefix.trim().length() <= 1) {
+                if (!seen.add(topLevel)) continue;
+                String value = topLevel.substring(Math.min(replacementStart, topLevel.length()));
+                candidates.add(new Candidate(
+                        value,
+                        topLevel,
+                        "LumaCLI 命令",
+                        hint.description(),
+                        null,
+                        null,
+                        true
+                ));
+            } else {
+                String value = command.substring(Math.min(replacementStart, command.length()));
+                candidates.add(new Candidate(
+                        value,
+                        hint.display(),
+                        "LumaCLI 命令",
+                        hint.description(),
+                        null,
+                        null,
+                        true
+                ));
+            }
         }
     }
 
