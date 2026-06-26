@@ -18,24 +18,50 @@ public final class TerminalCapabilities {
         if (terminal == null) {
             return false;
         }
+        if (System.getenv("NO_COLOR") != null) {
+            return true;
+        }
+        // Windows 10+ 控制台原生支持 ANSI（即使 JLine 因 JNI 加载失败报告 dumb）
+        if (isWindows10OrLater()) {
+            return true;
+        }
         String type = terminal.getType();
         if (type != null && type.equalsIgnoreCase("dumb")) {
             return false;
-        }
-        if (System.getenv("NO_COLOR") != null) {
-            // NO_COLOR 只影响样式，不影响光标控制——保留 true，颜色由 AnsiStyle 自己关
-            return true;
         }
         String envTerm = System.getenv("TERM");
         return envTerm == null || !envTerm.equalsIgnoreCase("dumb");
     }
 
+    /** Windows cmd.exe 不支持 DECSTBM 滚动区域，状态栏需要降级。 */
+    static boolean isDumbTerminal(Terminal terminal) {
+        if (terminal == null) return true;
+        String type = terminal.getType();
+        return type != null && type.equalsIgnoreCase("dumb");
+    }
+
+    private static boolean isWindows10OrLater() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (!os.contains("windows")) return false;
+        try {
+            String[] parts = System.getProperty("os.version", "0").split("\\.");
+            return Integer.parseInt(parts[0]) >= 10;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
     /**
      * 终端是否适合启用 inline status 状态区。
      * 同时校验终端尺寸合理（rows ≥ 5）。
+     * Windows cmd.exe 等 dumb 终端不支持 DECSTBM 滚动区域，禁用状态栏。
      */
     public static boolean supportsScrollRegion(Terminal terminal) {
         if (!supportsAnsi(terminal)) {
+            return false;
+        }
+        // cmd.exe 等 dumb 终端不支持 DECSTBM
+        if (isDumbTerminal(terminal)) {
             return false;
         }
         if (Boolean.parseBoolean(System.getenv("LUMACLI_NO_STATUSBAR"))) {
